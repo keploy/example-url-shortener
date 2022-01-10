@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/keploy/go-sdk/keploy"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/bnkamalesh/webgo/v4"
 	"github.com/bnkamalesh/webgo/v4/middleware/accesslog"
 	"github.com/bnkamalesh/webgo/v4/middleware/cors"
+	"github.com/keploy/go-sdk/integrations"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
@@ -148,7 +150,7 @@ func getRoutes() []*webgo.Route {
 	}
 }
 
-var col *mongo.Collection
+var col *integrations.MongoDB
 var logger *zap.Logger
 
 func New(host, db string) (*mongo.Client, error) {
@@ -170,7 +172,7 @@ func main() {
 		logger.Fatal("failed to create mgo db client", zap.Error(err))
 	}
 	db := client.Database(ddName)
-	col = db.Collection(collection)
+	col = integrations.NewMongoDB(db.Collection(collection))
 
 	cfg := &webgo.Config{
 		Host:         "",
@@ -188,5 +190,7 @@ func main() {
 		nil, nil,
 		webgo.LogCfgDisableDebug,
 	)
+	kply := keploy.NewApp("url-shortener", "<API_KEY>", "https://api.keploy.io", "0.0.0.0", "8080")
+	integrations.WebGoV4(kply, router)
 	router.Start()
 }
