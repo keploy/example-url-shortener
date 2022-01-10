@@ -44,9 +44,9 @@ docker container run -it  -p 27017:27017 mongo
 ## Add Keploy SDK
 To add the keploy the SDK we need to wrap the dynamodb client and webgo router. Instructions are here - https://github.com/keploy/go-sdk/blob/main/README.md
 
-You can also checkout to the keploy branch which has the integrations already done and enter your API key in the keploy method
+You can also checkout to the  [keploy branch](https://github.com/keploy/test-app-url-shortner/tree/keploy) which has the integrations already done and enter your API key in the keploy method
 ```go
-	kply := keploy.NewApp("url-shortener", "<API_KEY>", "https://api.keploy.io", host, port)
+kply := keploy.NewApp("url-shortener", "<API_KEY>", "https://api.keploy.io", host, port)
 ```
 
 ## Capture mode
