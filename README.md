@@ -1,10 +1,10 @@
-# test-app-url-shortner
+# Example URL Shortener
 A sample url shortener app to test Keploy integration capabilities
 
 ## Installation
 ```bash
-git clone https://github.com/keploy/test-app-url-shortner
-cd test-app-url-shortner
+git clone https://github.com/keploy/example-url-shortener
+cd example-url-shortener
 go mod tidy
 ```
 The App also requires mongo
@@ -17,7 +17,7 @@ To add the keploy the SDK we need to wrap the dependencies of the url-shortner a
 
 See complete instructions to integrate Keploy Go SDK at [keploy/go-sdk](https://github.com/keploy/go-sdk/blob/main/README.md)
 
-For demo purpose, checkout to the [keploy branch](https://github.com/keploy/test-app-url-shortner/tree/keploy) which has the integrations done already.
+For demo purpose, checkout to the [keploy branch](https://github.com/keploy/example-url-shortener/tree/keploy) which has the integrations done already.
 
 ```bash
 git checkout keploy 
