@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go.mongodb.org/mongo-driver/bson"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -125,6 +126,7 @@ func putURL(w http.ResponseWriter, r *http.Request) {
 		w,
 		map[string]string{
 			"url": "http://localhost:8080/" + id,
+			//"foo": "bar",
 		})
 }
 
@@ -161,7 +163,8 @@ func New(host, db string) (*mongo.Client, error) {
 	return mongo.Connect(ctx, clientOptions)
 }
 
-func main() {
+func initialize() *webgo.Router {
+	rand.Seed(time.Now().UTC().UnixNano())
 	logger, _ = zap.NewProduction()
 	defer logger.Sync() // flushes buffer, if any
 	ddName, collection := "keploy", "url-shortener"
@@ -188,5 +191,10 @@ func main() {
 		nil, nil,
 		webgo.LogCfgDisableDebug,
 	)
-	router.Start()
+	return router
+}
+
+func main() {
+	r := initialize()
+	r.Start()
 }
