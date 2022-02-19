@@ -1,32 +1,23 @@
 package main
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"github.com/itchyny/base58-go"
-	"math/big"
-	"os"
+	"math/rand"
 )
 
 func GenerateShortLink(initialLink string) string {
-	urlHashBytes := sha256Of(initialLink)
-	generatedNumber := new(big.Int).SetBytes(urlHashBytes).Uint64()
-	finalString := base58Encoded([]byte(fmt.Sprintf("%d", generatedNumber)))
-	return finalString[:8]
+	return randomString(8)
 }
 
-func sha256Of(input string) []byte {
-	algorithm := sha256.New()
-	algorithm.Write([]byte(input))
-	return algorithm.Sum(nil)
+// Returns an int >= min, < max
+func randomInt(min, max int) int {
+	return min + rand.Intn(max-min)
 }
 
-func base58Encoded(bytes []byte) string {
-	encoding := base58.BitcoinEncoding
-	encoded, err := encoding.Encode(bytes)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+// Generate a random string of A-Z chars with len = l
+func randomString(len int) string {
+	bytes := make([]byte, len)
+	for i := 0; i < len; i++ {
+		bytes[i] = byte(randomInt(65, 90))
 	}
-	return string(encoded)
+	return string(bytes)
 }
