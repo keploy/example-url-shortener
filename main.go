@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/gin-gonic/gin"
+	"github.com/keploy/go-sdk/integrations/kgin/v1"
+	"github.com/keploy/go-sdk/integrations/kmongo"
+	"github.com/keploy/go-sdk/keploy"
 	"go.mongodb.org/mongo-driver/bson"
+	"math/rand"
 	"net/http"
 	"time"
 
-	"github.com/bnkamalesh/webgo/v4"
-	"github.com/bnkamalesh/webgo/v4/middleware/accesslog"
-	"github.com/bnkamalesh/webgo/v4/middleware/cors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
@@ -21,6 +22,9 @@ type url struct {
 	Updated time.Time `json:"updated" bson:"updated"`
 	URL     string    `json:"URL" bson:"url"`
 }
+
+var col *kmongo.Collection
+var logger *zap.Logger
 
 func Get(ctx context.Context, id string) (*url, error) {
 	// too repetitive
@@ -49,63 +53,42 @@ func Upsert(ctx context.Context, u url) error {
 	return nil
 }
 
-func getURL(w http.ResponseWriter, r *http.Request) {
-	// WebGo context
-	wctx := webgo.Context(r)
-	// URI parameters, map[string]string
-	hash := wctx.Params()["param"]
+func getURL(c *gin.Context) {
+	hash := c.Param("param")
 	if hash == "" {
-		webgo.R404(
-			w,
-			map[string]string{
-				"msg": "url not found",
-			})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "please append url hash"})
 		return
 	}
 
-	u, err := Get(r.Context(), hash)
+	u, err := Get(c.Request.Context(), hash)
 	if err != nil {
 		logger.Error("failed to find url in the database", zap.Error(err), zap.String("hash", hash))
-		webgo.R404(
-			w,
-			map[string]string{
-				"msg": "url not found",
-			})
+		c.JSON(http.StatusNotFound, gin.H{"error": "url not found"})
 		return
 	}
-	http.Redirect(w, r, u.URL, http.StatusSeeOther)
+	c.Redirect(http.StatusSeeOther, u.URL)
 	return
 }
 
-func putURL(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-
+func putURL(c *gin.Context) {
 	var m map[string]string
 
-	err := decoder.Decode(&m)
+	err := c.ShouldBindJSON(&m)
 	if err != nil {
 		logger.Error("failed to decode req", zap.Error(err))
-		webgo.R500(
-			w,
-			map[string]string{
-				"msg": "internal error",
-			})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode req"})
 		return
 	}
 	u := m["url"]
 
 	if u == "" {
-		webgo.R404(
-			w,
-			map[string]string{
-				"msg": "url not found",
-			})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing url param"})
 		return
 	}
 
 	t := time.Now()
 	id := GenerateShortLink(u)
-	err = Upsert(r.Context(), url{
+	err = Upsert(c.Request.Context(), url{
 		ID:      id,
 		Created: t,
 		Updated: t,
@@ -113,43 +96,11 @@ func putURL(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		logger.Error("failed to save url to db", zap.Error(err))
-		webgo.R500(
-			w,
-			map[string]string{
-				"msg": "internal error",
-			})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
-
-	webgo.R200(
-		w,
-		map[string]string{
-			"url": "http://localhost:8080/" + id,
-		})
+	c.JSON(http.StatusOK, gin.H{"url": "http://localhost:8080/" + id})
 }
-
-func getRoutes() []*webgo.Route {
-	return []*webgo.Route{
-		{
-			Name:          "post-url",
-			Method:        http.MethodPost,
-			Pattern:       "/url",
-			Handlers:      []http.HandlerFunc{putURL},
-			TrailingSlash: true,
-		},
-		{
-			Name:                    "get-url",
-			Method:                  http.MethodGet,
-			Pattern:                 "/:param",
-			Handlers:                []http.HandlerFunc{getURL},
-			TrailingSlash:           true,
-			FallThroughPostResponse: true,
-		},
-	}
-}
-
-var col *mongo.Collection
-var logger *zap.Logger
 
 func New(host, db string) (*mongo.Client, error) {
 	clientOptions := options.Client()
@@ -162,31 +113,39 @@ func New(host, db string) (*mongo.Client, error) {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	logger, _ = zap.NewProduction()
 	defer logger.Sync() // flushes buffer, if any
+
 	ddName, collection := "keploy", "url-shortener"
 	client, err := New("localhost:27017", ddName)
 	if err != nil {
 		logger.Fatal("failed to create mgo db client", zap.Error(err))
 	}
 	db := client.Database(ddName)
-	col = db.Collection(collection)
 
-	cfg := &webgo.Config{
-		Host:         "",
-		Port:         "8080",
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-	}
+	// integrate keploy with mongo
+	col = kmongo.NewCollection(db.Collection(collection))
 
-	router := webgo.NewRouter(cfg, getRoutes())
+	port := "8080"
+	// initialize keploy
+	k := keploy.New(keploy.Config{
+		App: keploy.AppConfig{
+			Name: "sample-url-shortner",
+			Port: "8080",
+		},
+		Server: keploy.ServerConfig{
+			URL: "http://localhost:8081/api",
+		},
+	})
 
-	router.UseOnSpecialHandlers(accesslog.AccessLog)
-	router.Use(accesslog.AccessLog)
-	router.Use(cors.CORS(nil))
-	webgo.GlobalLoggerConfig(
-		nil, nil,
-		webgo.LogCfgDisableDebug,
-	)
-	router.Start()
+	r := gin.Default()
+
+	// integrate keploy with gin router
+	kgin.GinV1(k, r)
+
+	r.GET("/:param", getURL)
+	r.POST("/url", putURL)
+
+	r.Run(":" + port)
 }
