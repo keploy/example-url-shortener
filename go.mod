@@ -1,4 +1,4 @@
-module test-app-url-shortner
+module test-app-url-shortener
 
 go 1.17
 
@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/gin-gonic/gin v1.7.7
+	github.com/itchyny/base58-go v0.2.0
 	github.com/keploy/go-sdk v0.2.3
 )
 
