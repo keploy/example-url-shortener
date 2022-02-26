@@ -13,10 +13,7 @@ docker-compose up
 git clone https://github.com/keploy/example-url-shortener && cd example-url-shortener
 go mod download
 ```
-The App also requires mongo
-```bash
-docker container run -it  -p 27017:27017 mongo
-```
+
 ### Run the application
 ```shell
 go run handler.go main.go
