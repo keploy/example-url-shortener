@@ -13,10 +13,7 @@ docker-compose up
 git clone https://github.com/keploy/example-url-shortener && cd example-url-shortener
 go mod download
 ```
-The App also requires mongo
-```bash
-docker container run -it  -p 27017:27017 mongo
-```
+
 ### Run the application
 ```shell
 go run handler.go main.go
@@ -67,9 +64,7 @@ Now, let's see the magic! 🪄💫
 
 ## Test mode
 
-Now that we have our testcase captured. **Shut down your mongo docker container. 😐**
-
-then run the test file
+Now that we have our testcase captured, run the test file.
 ```shell
  go test -coverpkg=./... -covermode=atomic  ./...
 ```
