@@ -1,3 +1,5 @@
+# moved to https://github.com/keploy/sample-go/tree/main/gin-mongo
+
 # Example URL Shortener
 A sample url shortener app to test Keploy integration capabilities
 
