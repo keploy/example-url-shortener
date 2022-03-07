@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
 	"fmt"
+	"math/big"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/itchyny/base58-go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"math/big"
-	"net/http"
-	"time"
 )
 
 type url struct {
@@ -92,8 +93,8 @@ func putURL(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"ts":  time.Now().UnixNano(),
-		"url": "http://localhost:8080/" + id,
+		"ts":   time.Now().UnixNano(),
+		"urls": "http://localhost:8080/" + id,
 	})
 }
 
@@ -108,16 +109,12 @@ func New(host, db string) (*mongo.Client, error) {
 }
 
 func GenerateShortLink(initialLink string) string {
-	urlHashBytes := sha256Of(initialLink)
-	generatedNumber := new(big.Int).SetBytes(urlHashBytes).Uint64()
+	bytes := make([]byte, 32)
+	_, _ = rand.Read(bytes)
+
+	generatedNumber := new(big.Int).SetBytes(bytes).Uint64()
 	finalString := base58Encoded([]byte(fmt.Sprintf("%d", generatedNumber)))
 	return finalString[:8]
-}
-
-func sha256Of(input string) []byte {
-	algorithm := sha256.New()
-	algorithm.Write([]byte(input))
-	return algorithm.Sum(nil)
 }
 
 func base58Encoded(bytes []byte) string {
